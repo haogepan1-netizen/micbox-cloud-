@@ -1,0 +1,740 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Micbox Cloud</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <style>
+        :root {
+            --bg: #0f0f0f;
+            --bg-secondary: #1f1f1f;
+            --bg-hover: #272727;
+            --bg-card: #1f1f1f;
+            --text: #f1f1f1;
+            --text-secondary: #aaaaaa;
+            --border: #303030;
+            --accent: #ff0000;
+            --accent-hover: #cc0000;
+            --blue: #3ea6ff;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: "Roboto", "Arial", sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            overflow: hidden;
+            height: 100vh;
+        }
+        
+        /* 登录页 */
+        .auth-screen {
+            position: fixed; inset: 0;
+            background: var(--bg);
+            display: flex; align-items: center; justify-content: center;
+            z-index: 1000;
+        }
+        .auth-box {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 40px;
+            width: 400px;
+            max-width: 90%;
+            text-align: center;
+        }
+        .auth-box h1 {
+            font-size: 28px; margin-bottom: 8px;
+            display: flex; align-items: center; justify-content: center; gap: 10px;
+        }
+        .auth-box h1 span { color: var(--accent); }
+        .auth-box .subtitle { color: var(--text-secondary); margin-bottom: 28px; font-size: 14px; }
+        .form-group { margin-bottom: 18px; text-align: left; }
+        .form-group label { display: block; margin-bottom: 8px; font-size: 14px; color: var(--text-secondary); }
+        .form-group input {
+            width: 100%; padding: 12px 14px;
+            background: var(--bg); color: var(--text);
+            border: 1px solid var(--border); border-radius: 8px;
+            font-size: 15px;
+        }
+        .form-group input:focus { outline: none; border-color: var(--accent); }
+        .btn {
+            width: 100%; padding: 12px;
+            border: none; border-radius: 8px;
+            font-size: 15px; font-weight: 500; cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-primary { background: var(--accent); color: white; }
+        .btn-primary:hover { background: var(--accent-hover); }
+        .btn-secondary { background: var(--bg-hover); color: var(--text); margin-top: 10px; }
+        
+        /* 主应用 */
+        .app { display: flex; height: 100vh; }
+        .sidebar {
+            width: 240px; background: var(--bg);
+            border-right: 1px solid var(--border);
+            display: flex; flex-direction: column;
+            padding: 12px 0;
+            flex-shrink: 0;
+        }
+        .logo {
+            padding: 8px 24px 20px;
+            font-size: 22px; font-weight: 700;
+            display: flex; align-items: center; gap: 10px;
+            color: white;
+        }
+        .logo span { color: var(--accent); }
+        .nav-item {
+            padding: 10px 24px; margin: 2px 12px;
+            border-radius: 10px; cursor: pointer;
+            display: flex; align-items: center; gap: 16px;
+            color: var(--text-secondary); font-size: 14px;
+            transition: all 0.15s;
+        }
+        .nav-item:hover { background: var(--bg-hover); color: var(--text); }
+        .nav-item.active { background: var(--bg-hover); color: var(--text); font-weight: 500; }
+        .nav-icon { font-size: 20px; width: 24px; text-align: center; }
+        
+        .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+        .topbar {
+            height: 56px; background: var(--bg);
+            border-bottom: 1px solid var(--border);
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 0 24px; flex-shrink: 0;
+        }
+        .search-box {
+            flex: 1; max-width: 640px; margin: 0 40px;
+            display: flex;
+        }
+        .search-box input {
+            flex: 1; padding: 8px 16px;
+            background: var(--bg-secondary); color: var(--text);
+            border: 1px solid var(--border); border-radius: 20px 0 0 20px;
+            font-size: 14px;
+        }
+        .search-box input:focus { outline: none; border-color: var(--blue); }
+        .search-box button {
+            padding: 0 20px; background: var(--bg-hover);
+            border: 1px solid var(--border); border-left: none;
+            border-radius: 0 20px 20px 0; color: var(--text);
+            cursor: pointer;
+        }
+        .user-chip {
+            display: flex; align-items: center; gap: 10px;
+            cursor: pointer; padding: 6px 12px; border-radius: 20px;
+        }
+        .user-chip:hover { background: var(--bg-hover); }
+        .user-avatar {
+            width: 32px; height: 32px; border-radius: 50%;
+            background: var(--bg-hover); overflow: hidden;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .user-avatar img { width: 100%; height: 100%; object-fit: cover; }
+        
+        .content {
+            flex: 1; overflow-y: auto;
+            padding: 24px; display: flex; gap: 24px;
+        }
+        
+        .section-title {
+            font-size: 20px; font-weight: 600; margin-bottom: 20px;
+            display: flex; align-items: center; justify-content: space-between;
+        }
+        .file-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+            gap: 16px;
+        }
+        .file-card {
+            background: var(--bg-card);
+            border: 2px solid transparent;
+            border-radius: 12px;
+            padding: 16px;
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+        }
+        .file-card:hover { background: var(--bg-hover); transform: translateY(-2px); }
+        .file-card.selected { border-color: var(--blue); }
+        .file-thumb {
+            width: 100%; height: 140px;
+            background: var(--bg-hover);
+            border-radius: 8px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 48px; margin-bottom: 12px;
+        }
+        .file-name {
+            font-size: 14px; font-weight: 500;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+            margin-bottom: 6px;
+        }
+        .file-meta {
+            font-size: 12px; color: var(--text-secondary);
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .badge {
+            padding: 2px 8px; border-radius: 4px;
+            font-size: 11px; font-weight: 600;
+        }
+        .badge-micbox { background: rgba(62,166,255,0.15); color: var(--blue); }
+        .badge-docx { background: rgba(76,175,80,0.15); color: #4caf50; }
+        
+        .preview-panel {
+            width: 380px; flex-shrink: 0;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            display: flex; flex-direction: column;
+            overflow: hidden;
+        }
+        .preview-header {
+            padding: 16px; border-bottom: 1px solid var(--border);
+            font-weight: 600; display: flex; justify-content: space-between; align-items: center;
+        }
+        .preview-body {
+            flex: 1; overflow-y: auto; padding: 20px;
+        }
+        .preview-placeholder {
+            height: 100%; display: flex; flex-direction: column;
+            align-items: center; justify-content: center; color: var(--text-secondary);
+            text-align: center;
+        }
+        .preview-content h1 { font-size: 20px; margin-bottom: 12px; color: var(--blue); }
+        .preview-content p { margin-bottom: 10px; line-height: 1.7; color: #ccc; font-size: 14px; }
+        .preview-actions {
+            padding: 16px; border-top: 1px solid var(--border);
+            display: flex; gap: 8px; flex-wrap: wrap;
+        }
+        .preview-actions button {
+            flex: 1; padding: 10px; border-radius: 8px;
+            border: none; cursor: pointer; font-size: 13px;
+            background: var(--bg-hover); color: var(--text);
+            transition: all 0.2s;
+        }
+        .preview-actions button:hover { background: var(--blue); color: white; }
+        
+        .upload-area {
+            border: 2px dashed var(--border);
+            border-radius: 12px; padding: 40px;
+            text-align: center; cursor: pointer;
+            transition: all 0.3s; margin-bottom: 20px;
+        }
+        .upload-area:hover { border-color: var(--blue); background: rgba(62,166,255,0.05); }
+        
+        .settings-grid { max-width: 600px; }
+        .setting-item {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 12px; padding: 20px;
+            margin-bottom: 16px;
+        }
+        .setting-item h3 { font-size: 16px; margin-bottom: 12px; }
+        .setting-item p { color: var(--text-secondary); font-size: 13px; margin-bottom: 12px; }
+        
+        .toast {
+            position: fixed; bottom: 24px; left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: var(--bg-secondary); color: white;
+            padding: 12px 24px; border-radius: 8px;
+            border: 1px solid var(--border);
+            font-size: 14px; opacity: 0;
+            transition: all 0.3s; z-index: 500;
+        }
+        .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+        
+        .hidden { display: none !important; }
+        
+        @media (max-width: 960px) {
+            .sidebar { width: 72px; }
+            .nav-item span { display: none; }
+            .preview-panel { display: none; }
+            .preview-panel.active { display: flex; position: fixed; inset: 0; z-index: 400; width: 100%; }
+        }
+    </style>
+</head>
+<body>
+    <!-- 登录 -->
+    <div class="auth-screen" id="authScreen">
+        <div class="auth-box">
+            <h1>📦 <span>Micbox</span> Cloud</h1>
+            <p class="subtitle">输入你的名字，进入你的独立文档空间</p>
+            <div class="form-group">
+                <label>你的名字 / 用户名</label>
+                <input type="text" id="usernameInput" placeholder="例如：ZhangSan" onkeypress="if(event.key==='Enter')enterApp()">
+            </div>
+            <button class="btn btn-primary" onclick="enterApp()">🚀 进入我的空间</button>
+            <p style="margin-top:16px;color:#666;font-size:12px;">每个人的数据完全隔离，互不可见</p>
+        </div>
+    </div>
+
+    <!-- 主应用 -->
+    <div class="app hidden" id="app">
+        <div class="sidebar">
+            <div class="logo">📦 <span>Micbox</span></div>
+            <div class="nav-item active" onclick="switchTab('files')"><span class="nav-icon">📁</span><span>我的文件</span></div>
+            <div class="nav-item" onclick="switchTab('upload')"><span class="nav-icon">☁️</span><span>上传</span></div>
+            <div class="nav-item" onclick="switchTab('settings')"><span class="nav-icon">⚙️</span><span>设置</span></div>
+            <div class="nav-item" onclick="logout()"><span class="nav-icon">🚪</span><span>退出</span></div>
+        </div>
+        <div class="main">
+            <div class="topbar">
+                <div class="search-box">
+                    <input type="text" placeholder="搜索 Micbox 文件..." id="searchInput" oninput="searchFiles()">
+                    <button>🔍</button>
+                </div>
+                <div class="user-chip" onclick="switchTab('settings')">
+                    <span id="topUsername">User</span>
+                    <div class="user-avatar" id="topAvatar">👤</div>
+                </div>
+            </div>
+            <div class="content" id="mainContent"></div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+<script>
+let currentUser = null;
+let selectedFileId = null;
+let currentTab = 'files';
+
+// ============ 用户隔离存储 ============
+function getUserKey(key) {
+    return `micbox_${currentUser}_${key}`;
+}
+function saveUserData(key, data) {
+    localStorage.setItem(getUserKey(key), JSON.stringify(data));
+}
+function loadUserData(key, defaultVal) {
+    const raw = localStorage.getItem(getUserKey(key));
+    return raw ? JSON.parse(raw) : defaultVal;
+}
+
+// ============ 登录（无密码） ============
+function enterApp() {
+    const name = document.getElementById('usernameInput').value.trim();
+    if (!name) return showToast('请输入名字');
+    if (name.length > 20) return showToast('名字太长了');
+    
+    currentUser = name;
+    document.getElementById('authScreen').classList.add('hidden');
+    document.getElementById('app').classList.remove('hidden');
+    document.getElementById('topUsername').textContent = name;
+    
+    // 加载头像
+    const avatar = loadUserData('avatar', '');
+    document.getElementById('topAvatar').innerHTML = avatar ? `<img src="${avatar}">` : '👤';
+    
+    switchTab('files');
+    showToast('欢迎，' + name);
+}
+
+function logout() {
+    currentUser = null;
+    selectedFileId = null;
+    document.getElementById('app').classList.add('hidden');
+    document.getElementById('authScreen').classList.remove('hidden');
+    document.getElementById('usernameInput').value = '';
+    showToast('已退出');
+}
+
+// ============ 解析 Micbox ============
+async function parseMicbox(arrayBuffer) {
+    try {
+        const zip = await JSZip.loadAsync(arrayBuffer);
+        let isMicbox = false, micboxVersion = null;
+        const customXml = await zip.file('docProps/custom.xml')?.async('string') || '';
+        if (customXml && customXml.includes('micbox.format.identifier')) {
+            isMicbox = true;
+            const m = customXml.match(/micbox\.format\.version.*?<vt:lpwstr>(.*?)<\/vt:lpwstr>/s);
+            if (m) micboxVersion = m[1];
+        }
+        let title = '', author = '';
+        const coreXml = await zip.file('docProps/core.xml')?.async('string') || '';
+        if (coreXml) {
+            const t = coreXml.match(/<dc:title>(.*?)<\/dc:title>/s);
+            const a = coreXml.match(/<dc:creator>(.*?)<\/dc:creator>/s);
+            if (t) title = t[1];
+            if (a) author = a[1];
+        }
+        const texts = [];
+        const docXml = await zip.file('word/document.xml')?.async('string') || '';
+        if (docXml) {
+            const parser = new DOMParser();
+            const xmlDoc = parser.parseFromString(docXml, 'application/xml');
+            const paragraphs = xmlDoc.getElementsByTagName('w:p');
+            for (let p of paragraphs) {
+                const runs = p.getElementsByTagName('w:r');
+                let txt = '';
+                for (let r of runs) {
+                    const tNodes = r.getElementsByTagName('w:t');
+                    for (let t of tNodes) txt += t.textContent;
+                }
+                if (txt.trim()) texts.push(txt.trim());
+            }
+        }
+        return { isMicbox, micboxVersion, title, author, texts, valid: true };
+    } catch (e) {
+        return { valid: false, error: e.message };
+    }
+}
+
+// ============ 上传（ZIP自动解密） ============
+async function handleUpload(file) {
+    if (!file) return;
+    const name = file.name.toLowerCase();
+    if (!name.endsWith('.zip') && !name.endsWith('.micbox') && !name.endsWith('.docx')) {
+        return showToast('仅支持 ZIP / Micbox / DOCX');
+    }
+    
+    const buf = await file.arrayBuffer();
+    
+    if (name.endsWith('.zip')) {
+        try {
+            const z = await JSZip.loadAsync(buf);
+            const found = [];
+            z.forEach((path, entry) => {
+                const p = path.toLowerCase();
+                if (!entry.dir && (p.endsWith('.micbox') || p.endsWith('.docx'))) found.push(path);
+            });
+            if (found.length === 0) return showToast('ZIP 内未找到 Micbox/DOCX');
+            
+            for (const path of found) {
+                const innerBuf = await z.file(path).async('arraybuffer');
+                await saveFileFromBuffer(innerBuf, path.split('/').pop());
+            }
+            showToast(`ZIP 解密成功，提取 ${found.length} 个文件`);
+            if (currentTab === 'files') renderFiles();
+            return;
+        } catch (e) {
+            return showToast('ZIP 解密失败: ' + e.message);
+        }
+    }
+    
+    await saveFileFromBuffer(buf, file.name);
+    showToast('上传成功');
+    if (currentTab === 'files') renderFiles();
+}
+
+async function saveFileFromBuffer(buf, filename) {
+    const parsed = await parseMicbox(buf);
+    const isMicbox = filename.toLowerCase().endsWith('.micbox') || (parsed.valid && parsed.isMicbox);
+    const isDocx = filename.toLowerCase().endsWith('.docx');
+    if (!isMicbox && !isDocx) return;
+    
+    // 转为 base64 存 localStorage（简单方案）
+    const base64 = arrayBufferToBase64(buf);
+    const files = loadUserData('files', []);
+    files.push({
+        id: 'f_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
+        name: filename,
+        type: isMicbox ? 'micbox' : 'docx',
+        size: buf.byteLength,
+        base64: base64,
+        isMicbox: parsed.valid ? parsed.isMicbox : isMicbox,
+        micboxVersion: parsed.micboxVersion,
+        title: parsed.valid ? parsed.title : '',
+        author: parsed.valid ? parsed.author : '',
+        texts: parsed.valid ? parsed.texts : [],
+        uploadTime: new Date().toISOString()
+    });
+    saveUserData('files', files);
+}
+
+function arrayBufferToBase64(buffer) {
+    let binary = '';
+    const bytes = new Uint8Array(buffer);
+    for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
+    return btoa(binary);
+}
+function base64ToArrayBuffer(base64) {
+    const binary = atob(base64);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    return bytes.buffer;
+}
+
+// ============ 界面 ============
+function switchTab(tab) {
+    currentTab = tab;
+    document.querySelectorAll('.nav-item').forEach((el, i) => {
+        el.classList.toggle('active', ['files','upload','settings','logout'][i] === tab);
+    });
+    const content = document.getElementById('mainContent');
+    if (tab === 'files') renderFiles();
+    else if (tab === 'upload') {
+        content.innerHTML = `
+            <div style="flex:1;">
+                <div class="section-title"><span>☁️ 上传文件</span></div>
+                <div class="upload-area" id="upArea" onclick="document.getElementById('upInput').click()">
+                    <div style="font-size:48px;margin-bottom:12px;">📦</div>
+                    <h3 style="margin-bottom:8px;">点击或拖拽上传</h3>
+                    <p style="color:var(--text-secondary);font-size:13px;">支持 ZIP（自动解密提取）、.micbox、.docx</p>
+                </div>
+                <input type="file" id="upInput" class="hidden" accept=".zip,.micbox,.docx" onchange="handleUpload(this.files[0])">
+                <p style="color:var(--text-secondary);font-size:13px;line-height:1.6;">
+                    💡 ZIP 会自动解压并提取内部的 Micbox/DOCX 文件<br>
+                    非 Micbox/DOCX 文件会被忽略
+                </p>
+            </div>
+            <div class="preview-panel" id="sidePreview">
+                <div class="preview-header">👁 文件预览</div>
+                <div class="preview-body" id="previewBody">
+                    <div class="preview-placeholder">
+                        <div style="font-size:40px;margin-bottom:12px;">📄</div>
+                        <p>点击文件进行预览</p>
+                    </div>
+                </div>
+            </div>
+        `;
+        setupDrop('upArea');
+    } else if (tab === 'settings') renderSettings();
+}
+
+async function renderFiles() {
+    const files = loadUserData('files', []);
+    const content = document.getElementById('mainContent');
+    let html = `
+        <div style="flex:1;min-width:0;">
+            <div class="section-title">
+                <span>📁 我的文件 (${files.length})</span>
+                <button class="btn btn-primary" style="width:auto;padding:8px 16px;font-size:13px;" onclick="switchTab('upload')">+ 上传</button>
+            </div>
+    `;
+    if (files.length === 0) {
+        html += `<div style="text-align:center;padding:80px 20px;color:var(--text-secondary);">
+            <div style="font-size:48px;margin-bottom:16px;">📭</div><p>暂无文件</p></div>`;
+    } else {
+        html += `<div class="file-grid" id="fileGrid">`;
+        for (const f of files) {
+            html += `
+                <div class="file-card ${selectedFileId === f.id ? 'selected' : ''}" onclick="selectFile('${f.id}')">
+                    <div class="file-thumb">${f.type === 'micbox' ? '📦' : '📄'}</div>
+                    <div class="file-name" title="${escapeHtml(f.name)}">${escapeHtml(f.name)}</div>
+                    <div class="file-meta">
+                        <span class="badge ${f.type === 'micbox' ? 'badge-micbox' : 'badge-docx'}">${f.type === 'micbox' ? 'MICBOX' : 'DOCX'}</span>
+                        <span>${formatSize(f.size)}</span>
+                    </div>
+                </div>`;
+        }
+        html += `</div>`;
+    }
+    html += `</div>`;
+    html += `
+        <div class="preview-panel" id="sidePreview">
+            <div class="preview-header">
+                <span>👁 文件预览</span>
+                <span style="font-size:12px;color:var(--text-secondary);">单文件模式</span>
+            </div>
+            <div class="preview-body" id="previewBody">
+                <div class="preview-placeholder">
+                    <div style="font-size:40px;margin-bottom:12px;">📄</div>
+                    <p>点击文件进行预览</p>
+                    <p style="font-size:12px;margin-top:8px;">仅渲染选中项，防止崩溃</p>
+                </div>
+            </div>
+            <div class="preview-actions" id="previewActions" style="display:none;">
+                <button onclick="downloadSelected()">⬇️ 下载</button>
+                <button onclick="convertSelected()">🔄 转换</button>
+                <button onclick="deleteSelected()">🗑️ 删除</button>
+            </div>
+        </div>`;
+    content.innerHTML = html;
+}
+
+function selectFile(id) {
+    selectedFileId = id;
+    renderFiles();
+    const files = loadUserData('files', []);
+    const file = files.find(f => f.id === id);
+    if (!file) return;
+    
+    const body = document.getElementById('previewBody');
+    const actions = document.getElementById('previewActions');
+    
+    let html = `<div class="preview-content">`;
+    html += `<h1>${escapeHtml(file.title || file.name)}</h1>`;
+    if (file.author) html += `<p style="color:var(--text-secondary);font-size:13px;margin-bottom:16px;">作者：${escapeHtml(file.author)}</p>`;
+    html += `<hr style="border:none;border-top:1px solid var(--border);margin:12px 0;">`;
+    if (file.texts && file.texts.length > 0) {
+        file.texts.forEach(t => html += `<p>${escapeHtml(t)}</p>`);
+    } else {
+        html += `<p style="color:var(--text-secondary);">无文本内容</p>`;
+    }
+    html += `</div>`;
+    
+    body.innerHTML = html;
+    actions.style.display = 'flex';
+}
+
+function setupDrop(id) {
+    const area = document.getElementById(id);
+    if (!area) return;
+    area.addEventListener('dragover', e => { e.preventDefault(); area.style.borderColor = 'var(--blue)'; });
+    area.addEventListener('dragleave', () => { area.style.borderColor = ''; });
+    area.addEventListener('drop', e => {
+        e.preventDefault(); area.style.borderColor = '';
+        if (e.dataTransfer.files.length) handleUpload(e.dataTransfer.files[0]);
+    });
+}
+
+function renderSettings() {
+    const content = document.getElementById('mainContent');
+    const avatar = loadUserData('avatar', '');
+    content.innerHTML = `
+        <div class="settings-grid" style="flex:1;">
+            <div class="setting-item">
+                <h3>👤 当前用户：${escapeHtml(currentUser)}</h3>
+                <p>你的数据仅存储在此设备的浏览器中</p>
+                <div style="display:flex;align-items:center;gap:16px;margin-top:12px;">
+                    <div class="user-avatar" style="width:64px;height:64px;font-size:32px;">
+                        ${avatar ? `<img src="${avatar}">` : '👤'}
+                    </div>
+                    <div>
+                        <div style="font-weight:600;font-size:16px;">${escapeHtml(currentUser)}</div>
+                        <div style="color:var(--text-secondary);font-size:13px;">独立文档空间</div>
+                    </div>
+                </div>
+            </div>
+            <div class="setting-item">
+                <h3>🖼 更换头像</h3>
+                <input type="file" id="setAvatar" accept="image/*" style="display:none" onchange="updateAvatar(this)">
+                <button class="btn btn-secondary" style="width:auto;" onclick="document.getElementById('setAvatar').click()">选择新头像</button>
+            </div>
+            <div class="setting-item" style="border-color:rgba(255,0,0,0.3);">
+                <h3 style="color:#ff4444;">⚠️ 清空所有文件</h3>
+                <p>不可恢复</p>
+                <button class="btn btn-secondary" style="background:rgba(255,0,0,0.2);color:#ff4444;" onclick="clearAll()">清空文件库</button>
+            </div>
+        </div>
+    `;
+}
+
+function updateAvatar(input) {
+    const file = input.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+        saveUserData('avatar', e.target.result);
+        document.getElementById('topAvatar').innerHTML = `<img src="${e.target.result}">`;
+        renderSettings();
+        showToast('头像已更新');
+    };
+    reader.readAsDataURL(file);
+}
+
+function clearAll() {
+    if (!confirm('确定清空？不可恢复！')) return;
+    saveUserData('files', []);
+    selectedFileId = null;
+    showToast('已清空');
+    renderFiles();
+}
+
+// ============ 文件操作 ============
+function downloadSelected() {
+    if (!selectedFileId) return;
+    const files = loadUserData('files', []);
+    const file = files.find(f => f.id === selectedFileId);
+    if (!file) return;
+    const buf = base64ToArrayBuffer(file.base64);
+    const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = file.name;
+    a.click();
+    showToast('开始下载');
+}
+
+async function convertSelected() {
+    if (!selectedFileId) return;
+    const files = loadUserData('files', []);
+    const file = files.find(f => f.id === selectedFileId);
+    if (!file) return;
+    
+    if (file.type === 'micbox') {
+        const buf = base64ToArrayBuffer(file.base64);
+        const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = file.name.replace(/\.micbox$/i, '.docx');
+        a.click();
+        showToast('已转为 DOCX');
+    } else {
+        const buf = base64ToArrayBuffer(file.base64);
+        const newBuf = await convertDocxToMicbox(buf);
+        const blob = new Blob([newBuf], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = file.name.replace(/\.docx$/i, '.micbox');
+        a.click();
+        showToast('已转为 Micbox');
+    }
+}
+
+async function convertDocxToMicbox(arrayBuffer) {
+    const zip = await JSZip.loadAsync(arrayBuffer);
+    const timestamp = new Date().toISOString();
+    const customProps = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/custom-properties" xmlns:vt="http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes">
+  <property fmtid="{D5CDD505-2E9C-101B-9397-08002B2CF9AE}" pid="2" name="micbox.format.version"><vt:lpwstr>1.0</vt:lpwstr></property>
+  <property fmtid="{D5CDD505-2E9C-101B-9397-08002B2CF9AE}" pid="3" name="micbox.format.identifier"><vt:lpwstr>MICBOX-STANDARD-DOCX</vt:lpwstr></property>
+  <property fmtid="{D5CDD505-2E9C-101B-9397-08002B2CF9AE}" pid="4" name="micbox.created"><vt:lpwstr>${timestamp}</vt:lpwstr></property>
+  <property fmtid="{D5CDD505-2E9C-101B-9397-08002B2CF9AE}" pid="5" name="micbox.generator"><vt:lpwstr>Micbox Cloud</vt:lpwstr></property>
+</Properties>`;
+    zip.file('docProps/custom.xml', customProps);
+    let ct = await zip.file('[Content_Types].xml').async('string');
+    if (!ct.includes('custom-properties')) {
+        ct = ct.replace('</Types>', '  <Override PartName="/docProps/custom.xml" ContentType="application/vnd.openxmlformats-officedocument.custom-properties+xml"/>\n</Types>');
+        zip.file('[Content_Types].xml', ct);
+    }
+    let rels = await zip.file('_rels/.rels').async('string');
+    if (!rels.includes('custom-properties')) {
+        const rids = [...rels.matchAll(/Id="rId(\d+)"/g)].map(m => parseInt(m[1]));
+        const maxRid = rids.length ? Math.max(...rids) : 0;
+        rels = rels.replace('</Relationships>', `  <Relationship Id="rId${maxRid+1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/custom-properties" Target="docProps/custom.xml"/>\n</Relationships>`);
+        zip.file('_rels/.rels', rels);
+    }
+    return await zip.generateAsync({ type: 'arraybuffer' });
+}
+
+function deleteSelected() {
+    if (!selectedFileId) return;
+    if (!confirm('确定删除？')) return;
+    let files = loadUserData('files', []);
+    files = files.filter(f => f.id !== selectedFileId);
+    saveUserData('files', files);
+    selectedFileId = null;
+    showToast('已删除');
+    renderFiles();
+}
+
+function searchFiles() {
+    const q = document.getElementById('searchInput').value.toLowerCase();
+    document.querySelectorAll('.file-card').forEach(card => {
+        const name = card.querySelector('.file-name').textContent.toLowerCase();
+        card.style.display = name.includes(q) ? '' : 'none';
+    });
+}
+
+// ============ 工具 ============
+function formatSize(bytes) {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024*1024) return (bytes/1024).toFixed(1) + ' KB';
+    return (bytes/(1024*1024)).toFixed(1) + ' MB';
+}
+function escapeHtml(text) {
+    if (text == null) return '';
+    const div = document.createElement('div');
+    div.textContent = String(text);
+    return div.innerHTML;
+}
+function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2500);
+}
+</script>
+</body>
+</html>
